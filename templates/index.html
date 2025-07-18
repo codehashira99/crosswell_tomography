@@ -16,7 +16,9 @@
                 <div class="form-group">
                     <div class="input-group">
                         <label for="sourceDepth">Source Depth (m):</label>
-                        <input type="number" id="sourceDepth" required step="0.1" placeholder="e.g., 50" value="50">
+                        <select id="sourceDepth" required>
+                            <option value="" disabled selected>Select Depth</option>
+                        </select>
                     </div>
                     
                     <div class="input-group">
@@ -295,6 +297,15 @@
             }
         `;
         document.head.appendChild(style);
+
+        const depthSelect = document.getElementById('sourceDepth');
+for (let d = 100; d <= 1600; d += 100) {
+    const option = document.createElement('option');
+    option.value = d;
+    option.textContent = `${d} m`;
+    depthSelect.appendChild(option);
+}
+
     </script>
 </body>
 </html>
