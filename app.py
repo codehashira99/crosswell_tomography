@@ -81,7 +81,7 @@ class CrosswellTomography:
     
         return G, ray_paths   
     
-        def ray_cell_intersection(self, ray_x, ray_y, x_left, x_right, y_top, y_bottom):
+    def ray_cell_intersection(self, ray_x, ray_y, x_left, x_right, y_top, y_bottom):
             """Calculate the length of ray passing through a cell"""
         # Simple straight-line ray approximation
             x1, x2 = ray_x
@@ -136,8 +136,8 @@ class CrosswellTomography:
         
             return 0.0
         
-        def perform_svd_inversion(self, G, k=None):
-          """Perform SVD inversion with truncation"""
+    def perform_svd_inversion(self, G, k=None):
+        """Perform SVD inversion with truncation"""
         # Perform SVD
         U, s, Vt = svd(G, full_matrices=False)
         
@@ -177,7 +177,28 @@ class CrosswellTomography:
         slowness_anomalies = G_inv @ travel_times
         
         return slowness_anomalies, rank, s
+    
+    def create_visualisation_data(self, slowness_anomalies, ray_paths):
+        """Create data for visualisation"""
+        slowness_grid = slowness_anomalies.reshape(self.ny, self.nx)
 
+        borehole_data = {
+            'source': {'x':self.source_x, 'y':self.source_y},
+            'receivers': [{'x': self.receiver_x, 'y': depth} for depth in self.receiver_depths],
+            'boreholes': {
+                'source_x': [self.source_x, self.source_x],
+                'source_y': [0, self.depth_range],
+                'receiver_x': [self.receiver_x, self.receiver_x],
+                'receiver_y': [0, self.depth_range]
+            }
+        }
+        return {
+        'slowness_grid': slowness_grid.tolist(),
+        'x_centers': self.x_centers.tolist(),
+        'y_centers': self.y_centers.tolist(),
+        'ray_paths': ray_paths,
+        'borehole_data': borehole_data
+    }
     
 @app.route('/')
 def index():
