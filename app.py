@@ -81,61 +81,104 @@ class CrosswellTomography:
     
         return G, ray_paths   
     
-    def ray_cell_intersection(self, ray_x, ray_y, x_left, x_right, y_top, y_bottom):
-        """Calculate the length of ray passing through a cell"""
-    # Simple straight-line ray approximation
-        x1, x2 = ray_x
-        y1, y2 = ray_y
-    
-    # Check if ray passes through cell
-        if x1 == x2:  # Vertical ray
-            if x_left <= x1 <= x_right:
-                 y_enter = max(min(y1, y2), y_top)
-                 y_exit = min(max(y1, y2), y_bottom)
-                 if y_enter < y_exit:
-                     return y_exit - y_enter
-        else:
-        # Calculate ray equation: y = mx + b
-            m = (y2 - y1) / (x2 - x1)
-            b = y1 - m * x1
+        def ray_cell_intersection(self, ray_x, ray_y, x_left, x_right, y_top, y_bottom):
+            """Calculate the length of ray passing through a cell"""
+        # Simple straight-line ray approximation
+            x1, x2 = ray_x
+            y1, y2 = ray_y
         
-        # Find intersection points
-            intersections = []
-        
-        # Left boundary
-            if x_left >= min(x1, x2) and x_left <= max(x1, x2):
-                y_int = m * x_left + b
+        # Check if ray passes through cell
+            if x1 == x2:  # Vertical ray
+                if x_left <= x1 <= x_right:
+                    y_enter = max(min(y1, y2), y_top)
+                    y_exit = min(max(y1, y2), y_bottom)
+                    if y_enter < y_exit:
+                        return y_exit - y_enter
+            else:
+            # Calculate ray equation: y = mx + b
+                m = (y2 - y1) / (x2 - x1)
+                b = y1 - m * x1
+            
+            # Find intersection points
+                intersections = []
+            
+            # Left boundary
+                if x_left >= min(x1, x2) and x_left <= max(x1, x2):
+                    y_int = m * x_left + b
+                    if y_top <= y_int <= y_bottom:
+                        intersections.append((x_left, y_int))
+            
+            # Right boundary
+            if x_right >= min(x1, x2) and x_right <= max(x1, x2):
+                y_int = m * x_right + b
                 if y_top <= y_int <= y_bottom:
-                    intersections.append((x_left, y_int))
-        
-        # Right boundary
-        if x_right >= min(x1, x2) and x_right <= max(x1, x2):
-            y_int = m * x_right + b
-            if y_top <= y_int <= y_bottom:
-                intersections.append((x_right, y_int))
-        
-        # Top boundary
-        if m != 0:
-            x_int = (y_top - b) / m
-            if x_left <= x_int <= x_right and min(x1, x2) <= x_int <= max(x1, x2):
-                intersections.append((x_int, y_top))
-        
-        # Bottom boundary
-        if m != 0:
-            x_int = (y_bottom - b) / m
-            if x_left <= x_int <= x_right and min(x1, x2) <= x_int <= max(x1, x2):
-                intersections.append((x_int, y_bottom))
-        
-        # Remove duplicates and calculate length
-        if len(intersections) >= 2:
-            intersections = list(set(intersections))
+                    intersections.append((x_right, y_int))
+            
+            # Top boundary
+            if m != 0:
+                x_int = (y_top - b) / m
+                if x_left <= x_int <= x_right and min(x1, x2) <= x_int <= max(x1, x2):
+                    intersections.append((x_int, y_top))
+            
+            # Bottom boundary
+            if m != 0:
+                x_int = (y_bottom - b) / m
+                if x_left <= x_int <= x_right and min(x1, x2) <= x_int <= max(x1, x2):
+                    intersections.append((x_int, y_bottom))
+            
+            # Remove duplicates and calculate length
             if len(intersections) >= 2:
-                x_int1, y_int1 = intersections[0]
-                x_int2, y_int2 = intersections[1]
-                return np.sqrt((x_int2 - x_int1)**2 + (y_int2 - y_int1)**2)
-    
-        return 0.0
+                intersections = list(set(intersections))
+                if len(intersections) >= 2:
+                    x_int1, y_int1 = intersections[0]
+                    x_int2, y_int2 = intersections[1]
+                    return np.sqrt((x_int2 - x_int1)**2 + (y_int2 - y_int1)**2)
+        
+            return 0.0
+        
+        def perform_svd_inversion(self, G, k=None):
+          """Perform SVD inversion with truncation"""
+        # Perform SVD
+        U, s, Vt = svd(G, full_matrices=False)
+        
+        # Get matrix rank
+        rank = np.sum(s > 1e-10)
+        
+        # Truncate if k is specified
+        if k is not None and k < len(s):
+            s_truncated = s[:k]
+            U_truncated = U[:, :k]
+            Vt_truncated = Vt[:k, :]
+        else:
+            s_truncated = s
+            U_truncated = U
+            Vt_truncated = Vt
+        
+        # Create synthetic travel time data (for demonstration)
+        np.random.seed(42)  # For reproducible results
+        
+        # Create a synthetic slowness model
+        true_slowness = np.ones(G.shape[1])
+        # Add some anomalies
+        anomaly_indices = np.random.choice(G.shape[1], size=G.shape[1]//4, replace=False)
+        true_slowness[anomaly_indices] += np.random.normal(0, 0.1, len(anomaly_indices))
+        
+        # Generate synthetic travel times
+        travel_times = G @ true_slowness + np.random.normal(0, 0.01, G.shape[0])
+        
+        # Compute pseudo-inverse using truncated SVD
+        s_inv = np.zeros_like(s_truncated)
+        s_inv[s_truncated > 1e-10] = 1.0 / s_truncated[s_truncated > 1e-10]
+        
+        # Reconstruct inverse: G_inv = V * S_inv * U^T
+        G_inv = Vt_truncated.T @ np.diag(s_inv) @ U_truncated.T
+        
+        # Solve for slowness anomalies
+        slowness_anomalies = G_inv @ travel_times
+        
+        return slowness_anomalies, rank, s
 
+    
 @app.route('/')
 def index():
     return render_template('index.html')  # This looks for templates/index.html
