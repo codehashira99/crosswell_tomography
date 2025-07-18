@@ -80,6 +80,61 @@ class CrosswellTomography:
                 G[i, cell_index] = length
     
         return G, ray_paths   
+    
+    def ray_cell_intersection(self, ray_x, ray_y, x_left, x_right, y_top, y_bottom):
+        """Calculate the length of ray passing through a cell"""
+    # Simple straight-line ray approximation
+        x1, x2 = ray_x
+        y1, y2 = ray_y
+    
+    # Check if ray passes through cell
+        if x1 == x2:  # Vertical ray
+            if x_left <= x1 <= x_right:
+                 y_enter = max(min(y1, y2), y_top)
+                 y_exit = min(max(y1, y2), y_bottom)
+                 if y_enter < y_exit:
+                     return y_exit - y_enter
+        else:
+        # Calculate ray equation: y = mx + b
+            m = (y2 - y1) / (x2 - x1)
+            b = y1 - m * x1
+        
+        # Find intersection points
+            intersections = []
+        
+        # Left boundary
+            if x_left >= min(x1, x2) and x_left <= max(x1, x2):
+                y_int = m * x_left + b
+                if y_top <= y_int <= y_bottom:
+                    intersections.append((x_left, y_int))
+        
+        # Right boundary
+        if x_right >= min(x1, x2) and x_right <= max(x1, x2):
+            y_int = m * x_right + b
+            if y_top <= y_int <= y_bottom:
+                intersections.append((x_right, y_int))
+        
+        # Top boundary
+        if m != 0:
+            x_int = (y_top - b) / m
+            if x_left <= x_int <= x_right and min(x1, x2) <= x_int <= max(x1, x2):
+                intersections.append((x_int, y_top))
+        
+        # Bottom boundary
+        if m != 0:
+            x_int = (y_bottom - b) / m
+            if x_left <= x_int <= x_right and min(x1, x2) <= x_int <= max(x1, x2):
+                intersections.append((x_int, y_bottom))
+        
+        # Remove duplicates and calculate length
+        if len(intersections) >= 2:
+            intersections = list(set(intersections))
+            if len(intersections) >= 2:
+                x_int1, y_int1 = intersections[0]
+                x_int2, y_int2 = intersections[1]
+                return np.sqrt((x_int2 - x_int1)**2 + (y_int2 - y_int1)**2)
+    
+        return 0.0
 
 @app.route('/')
 def index():
