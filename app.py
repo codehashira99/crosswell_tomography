@@ -204,5 +204,49 @@ class CrosswellTomography:
 def index():
     return render_template('index.html')  # This looks for templates/index.html
 
+@app.route('/invert', methods=['POST'])
+def invert():
+    try:
+        data= request.json
+        source_depth = float(data['sourceDepth'])
+        k = int(data['k']) if data.get('k') else None
+        
+        # Create tomography object
+        tomo = CrosswellTomography(source_depth)
+        
+        # Calculate ray paths and G matrix
+        G, ray_paths = tomo.calculate_ray_paths()
+        
+        # Perform SVD inversion
+        slowness_anomalies, rank, singular_values = tomo.perform_svd_inversion(G, k)
+        
+        # Create visualization data
+        viz_data = tomo.create_visualization_data(slowness_anomalies, ray_paths)
+
+        return jsonify({
+            'success': True,
+            'rank': int(rank),
+            'singular_values': singular_values.tolist(),
+            'slowness_grid': viz_data['slowness_grid'],
+            'x_centers': viz_data['x_centers'],
+            'y_centers': viz_data['y_centers'],
+            'ray_paths': viz_data['ray_paths'],
+            'borehole_data': viz_data['borehole_data'],
+            'grid_info': {
+                'nx': tomo.nx,
+                'ny': tomo.ny,
+                'dx': tomo.dx,
+                'dy': tomo.dy,
+                'borehole_distance': tomo.borehole_distance,
+                'depth_range': tomo.depth_range
+            }
+        })
+    
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+    
 if __name__ == '__main__':
     app.run(debug=True)
