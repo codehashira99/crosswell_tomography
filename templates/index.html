@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Crosswell Tomography</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.26.0/plotly.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/index.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Crosswell Tomography Inversion</h1>
+        <p class="subtitle">Interactive SVD-based seismic tomography visualization</p>
+        
+        <div class="controls-section">
+            <form id="inversionForm">
+                <div class="form-group">
+                    <div class="input-group">
+                        <label for="sourceDepth">Source Depth (m):</label>
+                        <input type="number" id="sourceDepth" required step="0.1" placeholder="e.g., 50" value="50">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="k">Singular Values to Keep (K):</label>
+                        <input type="number" id="k" required step="1" min="1" placeholder="e.g., 10" value="10">
+                    </div>
+                    
+                    <button type="submit" class="btn" id="submitBtn">Run Inversion</button>
+                </div>
+            </form>
+        </div>
+        
+        <div id="loading" class="loading" style="display: none;">
+            <div class="spinner"></div>
+            <p>Running inversion, please wait...</p>
+        </div>
+        
+        <div id="error" class="error" style="display: none;"></div>
+        
+        <div id="results" class="results-grid" style="display: none;">
+            <div class="result-card">
+                <h3>Inversion Information</h3>
+                <div class="info-panel">
+                    <div class="info-item">
+                        <span class="info-label">Matrix Rank:</span>
+                        <span class="info-value" id="rankOutput">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Grid Size:</span>
+                        <span class="info-value" id="gridSizeOutput">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Ray Paths:</span>
+                        <span class="info-value" id="rayPathsOutput">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">K Used:</span>
+                        <span class="info-value" id="kUsedOutput">-</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="result-card">
+                <h3>Singular Values</h3>
+                <div class="plot-container" id="singularValuesPlot"></div>
+            </div>
+            
+            <div class="visualization-container">
+                <h3>Crosswell Setup & Ray Paths</h3>
+                <div class="plot-container" id="boreholeSetup"></div>
+            </div>
+            
+            <div class="visualization-container">
+                <h3>Reconstructed Slowness Model</h3>
+                <div class="plot-container" id="heatmap"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('inversionForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const sourceDepth = parseFloat(document.getElementById('sourceDepth').value);
+            const k = parseInt(document.getElementById('k').value);
+            
+            // Show loading
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('results').style.display = 'none';
+            document.getElementById('error').style.display = 'none';
+            document.getElementById('submitBtn').disabled = true;
+            
+            try {
+                const response = await fetch('/invert', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sourceDepth, k })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                console.log('Received data:', data); // Debug log
+                
+                if (data.success) {
+                    displayResults(data);
+                } else {
+                    showError(data.error || 'Unknown error occurred');
+                }
+                
+            } catch (error) {
+                console.error('Error:', error);
+                showError('Network error: ' + error.message);
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('submitBtn').disabled = false;
+            }
+        });
+        
+        function displayResults(data) {
+            // Update info panel
+            document.getElementById('rankOutput').textContent = data.rank || 'N/A';
+            document.getElementById('gridSizeOutput').textContent = 
+                data.grid_info ? `${data.grid_info.nx} × ${data.grid_info.ny}` : 'N/A';
+            document.getElementById('rayPathsOutput').textContent = 
+                data.ray_paths ? data.ray_paths.length : 'N/A';
+            document.getElementById('kUsedOutput').textContent = document.getElementById('k').value;
+            
+            // Plot singular values
+            if (data.singular_values && data.singular_values.length > 0) {
+                plotSingularValues(data.singular_values);
+            }
+            
+            // Plot borehole setup
+            if (data.borehole_data && data.ray_paths && data.grid_info) {
+                plotBoreholeSetup(data.borehole_data, data.ray_paths, data.grid_info);
+            }
+            
+            // Plot heatmap
+            if (data.slowness_grid && data.x_centers && data.y_centers) {
+                plotHeatmap(data.slowness_grid, data.x_centers, data.y_centers);
+            }
+            
+            // Show results
+            document.getElementById('results').style.display = 'grid';
+        }
+        
+        function plotSingularValues(singularValues) {
+            const trace = {
+                x: Array.from({length: singularValues.length}, (_, i) => i + 1),
+                y: singularValues,
+                type: 'scatter',
+                mode: 'lines+markers',
+                name: 'Singular Values',
+                line: { color: '#3498db', width: 3 },
+                marker: { size: 8, color: '#2980b9' }
+            };
+            
+            const layout = {
+                title: 'Singular Value Spectrum',
+                xaxis: { title: 'Index' },
+                yaxis: { title: 'Singular Value', type: 'log' },
+                margin: { l: 50, r: 20, t: 40, b: 50 },
+                showlegend: false,
+                plot_bgcolor: '#f8f9fa',
+                paper_bgcolor: 'white'
+            };
+            
+            Plotly.newPlot('singularValuesPlot', [trace], layout, {responsive: true});
+        }
+        
+        function plotBoreholeSetup(boreholeData, rayPaths, gridInfo) {
+            const traces = [];
+            
+            // Source borehole
+            traces.push({
+                x: boreholeData.boreholes.source_x,
+                y: boreholeData.boreholes.source_y,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Source Borehole',
+                line: { color: '#e74c3c', width: 4 }
+            });
+            
+            // Receiver borehole
+            traces.push({
+                x: boreholeData.boreholes.receiver_x,
+                y: boreholeData.boreholes.receiver_y,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Receiver Borehole',
+                line: { color: '#27ae60', width: 4 }
+            });
+            
+            // Source point
+            traces.push({
+                x: [boreholeData.source.x],
+                y: [boreholeData.source.y],
+                type: 'scatter',
+                mode: 'markers',
+                name: 'Source',
+                marker: { size: 15, color: '#e74c3c', symbol: 'star' }
+            });
+            
+            // Receiver points
+            traces.push({
+                x: boreholeData.receivers.map(r => r.x),
+                y: boreholeData.receivers.map(r => r.y),
+                type: 'scatter',
+                mode: 'markers',
+                name: 'Receivers',
+                marker: { size: 8, color: '#27ae60', symbol: 'triangle-up' }
+            });
+            
+            // Ray paths (first few for visualization)
+            for (let i = 0; i < Math.min(3, rayPaths.length); i++) {
+                traces.push({
+                    x: rayPaths[i].x,
+                    y: rayPaths[i].y,
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: `Ray ${i+1}`,
+                    line: { color: '#f39c12', width: 2, dash: 'dash' },
+                    opacity: 0.7
+                });
+            }
+            
+            const layout = {
+                title: 'Crosswell Setup & Ray Paths',
+                xaxis: { title: 'Distance (m)', range: [-5, gridInfo.borehole_distance + 5] },
+                yaxis: { title: 'Depth (m)', autorange: 'reversed' },
+                margin: { l: 50, r: 20, t: 40, b: 50 },
+                showlegend: true,
+                legend: { x: 0.02, y: 0.98 },
+                plot_bgcolor: '#f8f9fa',
+                paper_bgcolor: 'white'
+            };
+            
+            Plotly.newPlot('boreholeSetup', traces, layout, {responsive: true});
+        }
+        
+        function plotHeatmap(grid, xCenters, yCenters) {
+            const heatmapData = [{
+                z: grid,
+                x: xCenters,
+                y: yCenters,
+                type: 'heatmap',
+                colorscale: [
+                    [0, '#313695'],
+                    [0.25, '#74add1'],
+                    [0.5, '#f7f7f7'],
+                    [0.75, '#fdae61'],
+                    [1, '#d73027']
+                ],
+                colorbar: {
+                    title: 'Slowness Anomaly',
+                    titleside: 'right'
+                }
+            }];
+            
+            const layout = {
+                title: 'Reconstructed Slowness Model',
+                xaxis: { title: 'Distance (m)' },
+                yaxis: { title: 'Depth (m)', autorange: 'reversed' },
+                margin: { l: 50, r: 20, t: 40, b: 50 },
+                plot_bgcolor: 'white',
+                paper_bgcolor: 'white'
+            };
+            
+            Plotly.newPlot('heatmap', heatmapData, layout, {responsive: true});
+        }
+        
+        function showError(message) {
+            document.getElementById('error').textContent = message;
+            document.getElementById('error').style.display = 'block';
+        }
+        
+        // Add spinner CSS
+        const style = document.createElement('style');
+        style.textContent = `
+            .spinner {
+                border: 4px solid #f3f3f3;
+                border-top: 4px solid #3498db;
+                border-radius: 50%;
+                width: 40px;
+                height: 40px;
+                animation: spin 1s linear infinite;
+                margin: 20px auto;
+            }
+            
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>
