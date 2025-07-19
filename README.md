@@ -1,126 +1,140 @@
-An interactive web application for performing SVD-based crosswell seismic tomography inversion. This tool allows users to visualize ray paths between boreholes, analyze singular value decomposition, and reconstruct subsurface slowness models from synthetic travel time data.
-🚀 Features
+# Crosswell Seismic Tomography
 
-✨ Interactive Web Interface: Real-time parameter adjustment and visualization
-🔧 SVD-based Inversion: Singular Value Decomposition with truncation control
-📱 Ray Path Visualization: Dynamic display of seismic ray paths between boreholes
-🎯 Slowness Model Reconstruction: Heatmap visualization of subsurface properties
-📊 Singular Value Analysis: Interactive plots of eigenvalue spectrum
-🎛️ Parameter Control: Adjustable source depth and truncation parameters
+An interactive web application for performing SVD-based crosswell seismic tomography inversion. This tool enables geophysicists to visualize ray paths between boreholes, analyze singular value decomposition, and reconstruct subsurface slowness models from travel time data.
 
-🛠️ Tech Stack
-Backend:
+## Features
 
-Python 3.7+
-Flask - Web framework
-NumPy - Numerical computations
-SciPy - Scientific computing (SVD operations)
-Matplotlib - Plotting backend
+- **Interactive Web Interface** - Real-time parameter adjustment and visualization
+- **SVD-based Inversion** - Singular Value Decomposition with truncation control for stable reconstruction
+- **Ray Path Visualization** - Dynamic display of seismic ray paths between boreholes
+- **Slowness Model Reconstruction** - Heatmap visualization of subsurface velocity properties
+- **Singular Value Analysis** - Interactive plots showing eigenvalue spectrum for stability assessment
+- **Parameter Control** - Adjustable source depth and truncation parameters
 
-Frontend:
+## Quick Start
 
-HTML5, CSS3, JavaScript
-Plotly.js - Interactive data visualization
-Responsive CSS Grid layout
-Modern ES6+ JavaScript features
+### Prerequisites
 
-Mathematical Libraries:
+- Python 3.7 or higher
+- pip package manager
 
-scipy.linalg - Linear algebra operations
-numpy.random - Synthetic data generation
+### Installation
 
-📁 Project Structure
+1. Clone the repository:
+```bash
+git clone https://github.com/codehashira99/crosswell-tomography.git
+cd crosswell-tomography
+```
+
+2. Create and activate a virtual environment:
+```bash
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+```
+
+3. Install dependencies:
+```bash
+pip install -r requirements.txt
+```
+
+4. Run the application:
+```bash
+python app.py
+```
+
+5. Open your browser and navigate to `http://localhost:5000`
+
+## Usage
+
+### Basic Operation
+
+1. **Select Source Depth** - Choose the seismic source depth (100m - 1600m)
+2. **Set Truncation Parameter** - Define the number of singular values to keep (K parameter)
+3. **Run Inversion** - Click "Run Inversion" to process the tomographic data
+4. **Analyze Results** - View the reconstructed slowness model and ray path geometry
+
+### Understanding the Results
+
+- **Singular Values Plot** - Shows eigenvalue spectrum for inversion stability analysis
+- **Crosswell Setup** - Visualizes borehole positions, source locations, receivers, and ray paths
+- **Slowness Model** - Color-coded heatmap of reconstructed subsurface velocity variations
+- **Inversion Info** - Matrix rank, grid dimensions, and processing parameters
+
+## Technical Details
+
+### Technology Stack
+
+**Backend:**
+- Python 3.7+ with Flask web framework
+- NumPy for numerical computations
+- SciPy for scientific computing and SVD operations
+- Matplotlib for plotting backend
+
+**Frontend:**
+- HTML5, CSS3, JavaScript
+- Plotly.js for interactive data visualization
+- Responsive CSS Grid layout
+
+### Project Structure
+
+```
 crosswell-tomography/
-│
-├── app.py                     # Flask application and tomography engine
+├── app.py              # Flask application and tomography engine
 ├── templates/
-│   └── index.html            # Main web interface
+│   └── index.html      # Main web interface
 ├── static/
 │   └── css/
-│       └── index.css         # Styling (if exists)
-├── requirements.txt          # Python dependencies
-├── README.md                 # This file
-└── .gitignore               # Git ignore rules
-🚀 Getting Started
-Prerequisites
-Make sure you have the following installed:
+│       └── index.css   # Styling
+├── requirements.txt    # Python dependencies
+├── README.md
+└── .gitignore
+```
 
-Python (3.7 or higher)
-pip (Python package installer)
+### Mathematical Background
 
-Installation
+The application implements linearized seismic tomography using:
 
-Clone the repository:
+- **Forward Modeling** - Ray path calculation through discretized media
+- **Inverse Problem** - SVD-based least squares solution
+- **Regularization** - Truncated SVD for stable inversion
 
-bashgit clone https://github.com/yourusername/crosswell-tomography.git
-cd crosswell-tomography
+#### Key Equations
 
-Create a virtual environment (recommended):
+Forward problem: `t = G × s`
+- `t`: Travel times
+- `G`: Ray path matrix (geometry)
+- `s`: Slowness model
 
-bashpython -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+Inverse solution solved using SVD: `G = U × Σ × V^T`
 
-Install dependencies:
+### Configuration
 
-bashpip install -r requirements.txt
+Default parameters (modifiable in `app.py`):
 
-Run the application:
-
-bashpython app.py
-
-Open http://localhost:5000 to view the application in your browser.
-
-📖 Usage
-Basic Operation
-
-Select Source Depth: Choose the depth of the seismic source (100m - 1600m)
-Set Truncation Parameter: Define the number of singular values to keep (K parameter)
-Run Inversion: Click "Run Inversion" to process the tomographic data
-Analyze Results: View the reconstructed slowness model and ray path geometry
-
-Understanding the Results
-
-Singular Values Plot: Shows the eigenvalue spectrum for stability analysis
-Crosswell Setup: Visualizes borehole positions, source, receivers, and ray paths
-Slowness Model: Heatmap of reconstructed subsurface velocity variations
-Inversion Info: Matrix rank, grid dimensions, and processing parameters
-
-Advanced Configuration
-The application uses default parameters that can be modified in app.py:
-python# Grid and geometry parameters
+```python
 borehole_distance = 50    # Distance between boreholes (m)
 grid_size = 20           # Number of grid cells per dimension
 depth_range = 100        # Maximum depth (m)
 num_receivers = 10       # Number of receivers per borehole
-🧮 Mathematical Background
-Crosswell Tomography Theory
-The application implements linearized seismic tomography using:
+```
 
-Forward Modeling: Ray path calculation through discretized media
-Inverse Problem: SVD-based least squares solution
-Regularization: Truncated SVD for stable inversion
+## API Reference
 
-Key Equations
-The forward problem: t = G * s
+### POST /invert
 
-t: Travel times
-G: Ray path matrix (geometry)
-s: Slowness model
-
-The inverse solution: s = G⁻¹ * t
-
-Solved using SVD: G = U * Σ * Vᵀ
-
-🎛️ API Endpoints
-POST /invert
 Performs tomographic inversion with given parameters.
-Request Body:
-json{
+
+**Request Body:**
+```json
+{
   "sourceDepth": 500,
   "k": 10
 }
-Response:
-json{
+```
+
+**Response:**
+```json
+{
   "success": true,
   "rank": 15,
   "singular_values": [1.23, 0.45, ...],
@@ -129,81 +143,51 @@ json{
   "borehole_data": {...},
   "grid_info": {...}
 }
-🔧 Configuration
-Environment Variables
-bashFLASK_ENV=development    # For development mode
+```
+
+## Development
+
+### Key Classes
+
+- **CrosswellTomography** - Main computational engine
+  - `calculate_ray_paths()` - Computes ray geometry matrix
+  - `ray_cell_intersection()` - Calculates path lengths through cells
+  - `perform_svd_inversion()` - SVD-based inversion algorithm
+  - `create_visualization_data()` - Prepares results for plotting
+
+### Environment Variables
+
+```bash
+FLASK_ENV=development    # For development mode
 FLASK_DEBUG=1           # Enable debug mode
-Model Parameters
-Key parameters in CrosswellTomography class:
+```
 
-source_depth: Source position along borehole
-borehole_distance: Separation between wells
-grid_size: Resolution of inversion grid
-depth_range: Vertical extent of model
+### Performance
 
-🧪 Testing
-Currently uses synthetic data for demonstration. To test with real data:
+- **Grid Resolution:** Up to 20×20 cells (400 parameters)
+- **Ray Coverage:** 10 receiver positions per source
+- **Computation Time:** < 1 second for standard grid
+- **Browser Compatibility:** Chrome 90+, Firefox 88+, Safari 14+, Edge 90+
 
-Modify the perform_svd_inversion method
-Need to replace synthetic travel time generation
-Input real field measurements
+## Testing
 
+Currently uses synthetic data for demonstration. To implement real data:
 
-🔬 Scientific Background
-This implementation is based on established geophysical methods:
+1. Modify the `perform_svd_inversion` method
+2. Replace synthetic travel time generation with real field measurements
+3. Input actual crosswell survey data
 
-Seismic tomography principles
-Linear inverse theory
-SVD regularization techniques
-Crosswell seismic survey geometry
+## Contributing
 
-📚 Documentation
-Key Classes
-CrosswellTomography: Main computational engine
+Contributions are welcome! Please feel free to submit a Pull Request.
 
-calculate_ray_paths(): Computes ray geometry matrix
-ray_cell_intersection(): Calculates path lengths through cells
-perform_svd_inversion(): SVD-based inversion algorithm
-create_visualization_data(): Prepares results for plotting
+## License
 
-Mathematical Methods
-
-Ray Path Calculation: Linear ray approximation between source-receiver pairs
-Matrix Construction: G-matrix representing ray path lengths through cells
-SVD Decomposition: Singular value analysis for inversion stability
-Truncated Inversion: Regularization through eigenvalue cutoff
-
-📄 License
 This project is licensed under the MIT License - see the LICENSE file for details.
-👨‍💻 Author
-Your Name
 
+## Acknowledgments
 
-🙏 Acknowledgments
-
-SciPy community for robust linear algebra tools
-Plotly.js for interactive visualization capabilities
-Flask development team for the lightweight web framework
-Geophysics community for tomography algorithm development
-
-
-📊 Performance Stats
-
-Grid Resolution: Up to 20x20 cells (400 parameters)
-Ray Coverage: 10 receiver positions per source
-Computation Time: < 1 second for standard grid
-Memory Usage: Minimal for typical problem sizes
-
-🏗️ Technical Details
-Dependencies
-Flask>=2.0.0
-numpy>=1.21.0
-scipy>=1.7.0
-matplotlib>=3.5.0
-Browser Compatibility
-
-Chrome 90+
-Firefox 88+
-Safari 14+
-Edge 90+
-Chat controls Sonnet 4
+- SciPy community for robust linear algebra tools
+- Plotly.js for interactive visualization capabilities
+- Flask development team for the lightweight web framework
+- Geophysics community for tomography algorithm development
